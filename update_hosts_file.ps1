@@ -85,6 +85,9 @@ function installUpdateAgent {
 
     replaceHosts
 
+    # Add exclusion path for Windows Defender so it won't undo changes to hosts file
+    Add-MpPreference -ExclusionPath "$hosts_file_loc"
+
     write-host "Done! Press any key to continue..."
     Read-Host 
 }
@@ -106,7 +109,8 @@ function uninstallUpdateAgent {
         write-host "`nCopying old hosts file back to ${hosts_file_loc}..."
         mv $hosts_file_loc".initial" $hosts_file_loc -force
     }
-   
+
+    Remove-MpPreference -ExclusionPath "$hosts_file_loc"
 }
 
 function outputHostsSize {
