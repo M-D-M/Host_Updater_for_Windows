@@ -25,6 +25,9 @@ function main ($vals) {
             "run" {
                 replaceHosts
             }
+            "status" {
+                checkStatus
+            }
             default {
                 usageMessage
             }
@@ -33,7 +36,7 @@ function main ($vals) {
 }
 
 function usageMessage {
-    write-host "`nUsage: <script name> [install|uninstall|run]"
+    write-host "`nUsage: <script name> [install|uninstall|run|status]"
 }
 
 function replaceHosts {
@@ -48,7 +51,7 @@ function replaceHosts {
     write-output "Removing any line that doesn't begin with 0.0.0.0"
     Get-Content $hosts_file_loc".download" | Where-Object {$_ -match '^0.0.0.0'} | Set-Content $hosts_file_loc".tmp"
 
-    if (!(test-path $hosts_file_loc".initial")) {
+    if (!(isHostsFileModified)) {
             write-host "`nFirst time running this script; copying existing hosts file to hosts.initial..."
             cp $hosts_file_loc $hosts_file_loc".initial"
     }
@@ -64,7 +67,7 @@ function replaceHosts {
 }
 
 function installUpdateAgent {
-    if (checkIfAgentExists) {
+    if (doesAgentExist) {
         write-host "`nHost updater task already exists! No need to create again."
     }
     else
@@ -86,14 +89,23 @@ function installUpdateAgent {
 }
 
 function uninstallUpdateAgent {
-    if (checkIfAgentExists) {
+    if (doesAgentExist) {
         write-host "`nRemoving scheduled tasks to update hosts file..."
 
         Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
     }
-    
-    write-host "`nCopying old hosts file back to ${hosts_file_loc}..."
-    mv $hosts_file_loc".initial" $hosts_file_loc -force
+    else {
+        write-host "`nScheduled task to update hosts file does not exist."
+    }
+
+    if (!(isHostsFileModified)) {
+        write-host "`nHosts file has not been modified. Exiting."
+    }
+    else {
+        write-host "`nCopying old hosts file back to ${hosts_file_loc}..."
+        mv $hosts_file_loc".initial" $hosts_file_loc -force
+    }
+   
 }
 
 function outputHostsSize {
@@ -101,10 +113,37 @@ function outputHostsSize {
     write-host "`nSize of hosts file: $hostsSize"
 }
 
-function checkIfAgentExists {
-    $exists = Get-ScheduledTaskInfo $taskName
+function checkStatus {
+    if (!(isHostsFileModified)) {
+        write-host "`nHosts file has not been modified."
+    }
+    else {
+        outputHostsSize
+    }
 
-    return $exists
+    if (doesAgentExist) {
+        write-host "Host updater task exists! Next run time: $((Get-ScheduledTaskInfo $taskName).NextRunTime)"
+    }
+    else {
+        write-host "`nTask to update hosts file does not exist."
+    }
+}
+
+function doesAgentExist {
+    return (Get-ScheduledTask | Select -ExpandProperty TaskName | Where-Object {$_ -match $taskName})
+}
+
+function isHostsFileModified {
+    $returnVal = $true
+
+    if (test-path $hosts_file_loc".initial") {
+        $returnVal = $true
+    }
+    else {
+        $returnVal = $false
+    }
+
+    return $returnVal
 }
 
 main $args
