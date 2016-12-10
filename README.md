@@ -8,6 +8,6 @@ Appends to your current hosts file.
 
 ## Installation
 
-Right-click on the following link and save it to your C:/Users/<username>/ directory.  Then right-click on the file in that directory and click "Run with Powershell":
+Right-click on the following link and save it to your C:/Users/\<username\>/ directory.  Then right-click on the file in that directory and click "Run with Powershell":
 
 https://raw.githubusercontent.com/M-D-M/Host_Updater_for_Windows/master/update_hosts_file.ps1
