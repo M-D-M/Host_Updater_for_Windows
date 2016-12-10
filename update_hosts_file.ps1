@@ -1,13 +1,16 @@
 #!/usr/bin/powershell
 
-$version="1.10.0"
+$version="1.11.0"
 
-$remote_hosts_file="http://winhelp2002.mvps.org/hosts.txt"
-# $hosts_file_loc="hosts"
+$remoteHostsFile="http://winhelp2002.mvps.org/hosts.txt"
+# $hostsFileLoc="hosts"
 
-$hosts_file_loc="C:\Windows\System32\drivers\etc\hosts"
-$scriptName="$(Split-Path -Path $MyInvocation.MyCommand.Path)\$($MyInvocation.MyCommand)"
-$scriptDesc="Update hosts file with $scriptName"
+$hostsDir="C:\Windows\System32\drivers\etc"
+$hostsFileLoc="${hostsDir}\hosts"
+$scriptName="$($MyInvocation.MyCommand)"
+$rootScriptFile="${hostsDir}\${scriptName}"
+$localScriptFile="$(Split-Path -Path $MyInvocation.MyCommand.Path)\${scriptName}"
+$taskDesc="Update hosts file with ${scriptName}"
 $taskName="UpdateHosts"
 
 function main ($vals) {
@@ -72,7 +75,7 @@ function usageMessage {
         4 {}
     }
 
-    # write-host "`nUsage: $scriptName [install|uninstall|run|status]"
+    # write-host "`nUsage: $localScriptFile [install|uninstall|run|status]"
 
     waitForUser
 }
@@ -83,25 +86,25 @@ function replaceHosts {
 
     outputHostsSize
     
-    write-output "Downloading new hosts information from $remote_hosts_file..."
-    Invoke-WebRequest -Uri $remote_hosts_file -OutFile $hosts_file_loc".download"
+    write-output "Downloading new hosts information from $remoteHostsFile..."
+    Invoke-WebRequest -Uri $remoteHostsFile -OutFile $hostsFileLoc".download"
 
     write-output "Removing any line that doesn't begin with 0.0.0.0"
-    Get-Content $hosts_file_loc".download" | Where-Object {$_ -match '^0.0.0.0'} | Set-Content $hosts_file_loc".tmp"
+    Get-Content $hostsFileLoc".download" | Where-Object {$_ -match '^0.0.0.0'} | Set-Content $hostsFileLoc".tmp"
 
     if (!(isHostsFileModified)) {
             write-host "`nFirst time running this script; copying existing hosts file to hosts.initial..."
-            cp $hosts_file_loc $hosts_file_loc".initial"
+            cp $hostsFileLoc $hostsFileLoc".initial"
     }
 
-    mv $hosts_file_loc $hosts_file_loc".old" -force
+    mv $hostsFileLoc $hostsFileLoc".old" -force
 
-    Get-Content $hosts_file_loc".initial" | Add-Content $hosts_file_loc
-    get-content $hosts_file_loc".tmp" | add-content $hosts_file_loc
+    Get-Content $hostsFileLoc".initial" | Add-Content $hostsFileLoc
+    get-content $hostsFileLoc".tmp" | add-content $hostsFileLoc
 
     outputHostsSize
 
-    rm $hosts_file_loc".tmp", $hosts_file_loc".download"
+    rm $hostsFileLoc".tmp", $hostsFileLoc".download"
 }
 
 function installUpdateAgent {
@@ -112,18 +115,18 @@ function installUpdateAgent {
     {
         write-host "`nCreating windows task to update hosts file weekly..."
 
-        $arguments="-NoProfile -WindowStyle Hidden -command ""${scriptName} run"""
+        cp $localScriptFile $rootScriptFile -force
+
+        $arguments="-NoProfile -WindowStyle Hidden -command ""${rootScriptFile} run"""
         $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "$arguments"
 
-        $trigger = New-ScheduledTaskTrigger -Daily -At 9pm
 
-        Register-ScheduledTask -Action $action -Trigger $trigger -TaskName "${taskName}" -Description "${scriptDesc}" -User "System"
+        Register-ScheduledTask -Action $action -Trigger $trigger -TaskName "${taskName}" -Description "${taskDesc}" -User "System"
     }
 
     replaceHosts
 
     # Add exclusion path for Windows Defender so it won't undo changes to hosts file
-    Add-MpPreference -ExclusionPath "$hosts_file_loc"
 }
 
 function uninstallUpdateAgent {
@@ -131,6 +134,7 @@ function uninstallUpdateAgent {
         write-host "`nRemoving scheduled tasks to update hosts file..."
 
         Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
+        rm $rootScriptFile
     }
     else {
         write-host "`nScheduled task to update hosts file does not exist."
@@ -141,10 +145,9 @@ function uninstallUpdateAgent {
     }
     else {
         write-host "`nCopying old hosts file back to ${hosts_file_loc}..."
-        mv $hosts_file_loc".initial" $hosts_file_loc -force
+        mv $hostsFileLoc".initial" $hostsFileLoc -force
     }
 
-    Remove-MpPreference -ExclusionPath "$hosts_file_loc"
 }
 
 function checkStatus {
@@ -201,7 +204,7 @@ function escalatePriv {
 }
 
 function outputHostsSize {
-    $hostsSize=$(Get-Content $hosts_file_loc | Measure-Object -Line).Lines
+    $hostsSize=$(Get-Content $hostsFileLoc | Measure-Object -Line).Lines
     write-host "`nSize of hosts file: $hostsSize"
 }
 
@@ -212,7 +215,7 @@ function doesAgentExist {
 function isHostsFileModified {
     $returnVal = $true
 
-    if (test-path $hosts_file_loc".initial") {
+    if (test-path $hostsFileLoc".initial") {
         $returnVal = $true
     }
     else {
