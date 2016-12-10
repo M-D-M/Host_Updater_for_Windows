@@ -120,6 +120,7 @@ function installUpdateAgent {
         $arguments="-NoProfile -WindowStyle Hidden -command ""${rootScriptFile} run"""
         $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "$arguments"
 
+        $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek "Sun" -At 7pm
 
         Register-ScheduledTask -Action $action -Trigger $trigger -TaskName "${taskName}" -Description "${taskDesc}" -User "System"
     }
@@ -127,6 +128,7 @@ function installUpdateAgent {
     replaceHosts
 
     # Add exclusion path for Windows Defender so it won't undo changes to hosts file
+    Add-MpPreference -ExclusionPath "$hostsDir"
 }
 
 function uninstallUpdateAgent {
@@ -148,6 +150,7 @@ function uninstallUpdateAgent {
         mv $hostsFileLoc".initial" $hostsFileLoc -force
     }
 
+    Remove-MpPreference -ExclusionPath "$hostsDir"
 }
 
 function checkStatus {
