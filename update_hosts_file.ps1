@@ -2,6 +2,9 @@
 
 $remote_hosts_file="http://winhelp2002.mvps.org/hosts.txt"
 $hosts_file_loc="C:\Windows\System32\drivers\etc\hosts"
+$scriptName="$(Split-Path -Path $MyInvocation.MyCommand.Path)\$($MyInvocation.MyCommand)"
+$scriptDesc="Update hosts file with $scriptName"
+$taskName="UpdateHosts"
 # $hosts_file_loc="hosts"
 
 function main ($vals) {
@@ -61,19 +64,33 @@ function replaceHosts {
 }
 
 function installUpdateAgent {
-    write-host "`nInstall feature under construction."
+    if (checkIfAgentExists) {
+        write-host "`nHost updater task already exists! No need to create again."
+    }
+    else
+    {
+        write-host "`nCreating windows task to update hosts file weekly..."
 
-    exit
+        $arguments="-NoProfile -WindowStyle Hidden -command ""${scriptName} run"""
+        $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "$arguments"
 
-    $action = New-ScheduledTaskAction -Execute 'Powershell.exe' -Argument '-NoProfile -WindowStyle Hidden -command "& {get-eventlog -logname Application -After ((get-date).AddDays(-1)) | Export-Csv -Path c:\fso\applog.csv -Force -NoTypeInformation}"'
+        $trigger = New-ScheduledTaskTrigger -Daily -At 9pm
 
-    $trigger =  New-ScheduledTaskTrigger -Daily -At 9am
+        Register-ScheduledTask -Action $action -Trigger $trigger -TaskName "${taskName}" -Description "${scriptDesc}" -User "System"
+    }
 
-    Register-ScheduledTask -Action $action -Trigger $trigger -TaskName "AppLog" -Description "Daily dump of Applog"
+    replaceHosts
+
+    write-host "Done! Press any key to continue..."
+    Read-Host 
 }
 
 function uninstallUpdateAgent {
-    write-host "`nRemoving update agent..."
+    if (checkIfAgentExists) {
+        write-host "`nRemoving scheduled tasks to update hosts file..."
+
+        Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
+    }
     
     write-host "`nCopying old hosts file back to ${hosts_file_loc}..."
     mv $hosts_file_loc".initial" $hosts_file_loc -force
@@ -82,6 +99,12 @@ function uninstallUpdateAgent {
 function outputHostsSize {
     $hostsSize=$(Get-Content $hosts_file_loc | Measure-Object -Line).Lines
     write-host "`nSize of hosts file: $hostsSize"
+}
+
+function checkIfAgentExists {
+    $exists = Get-ScheduledTaskInfo $taskName
+
+    return $exists
 }
 
 main $args
