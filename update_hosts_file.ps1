@@ -1,5 +1,7 @@
 #!/usr/bin/powershell
 
+$version="1.10.0"
+
 $remote_hosts_file="http://winhelp2002.mvps.org/hosts.txt"
 # $hosts_file_loc="hosts"
 
@@ -39,8 +41,8 @@ function main ($vals) {
 }
 
 function usageMessage {
-    $title = "Host Updater for Windows"
-    $message = "Welcome to the host updater for Windows.  Please choose an option below:"
+    $title = "Host Updater for Windows v${version}"
+    $message = "Welcome to the Host Updater for Windows.  Please choose an option below:"
 
     $choice1 = New-Object System.Management.Automation.Host.ChoiceDescription "&Install", `
         "Installs host updater task and updates host file."
