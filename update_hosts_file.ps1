@@ -1,11 +1,12 @@
 #!/usr/bin/powershell
 
 $remote_hosts_file="http://winhelp2002.mvps.org/hosts.txt"
+# $hosts_file_loc="hosts"
+
 $hosts_file_loc="C:\Windows\System32\drivers\etc\hosts"
 $scriptName="$(Split-Path -Path $MyInvocation.MyCommand.Path)\$($MyInvocation.MyCommand)"
 $scriptDesc="Update hosts file with $scriptName"
 $taskName="UpdateHosts"
-# $hosts_file_loc="hosts"
 
 function main ($vals) {
     if ($vals.length -lt 1)
