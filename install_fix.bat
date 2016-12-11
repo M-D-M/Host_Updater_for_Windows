@@ -1,0 +1,1 @@
+powershell.exe -command "set-executionpolicy remotesigned -scope localmachine"
