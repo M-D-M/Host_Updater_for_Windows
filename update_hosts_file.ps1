@@ -1,6 +1,6 @@
 #!/usr/bin/powershell
 
-$version="1.11.0"
+$version="1.12"
 
 $remoteHostsFile="http://winhelp2002.mvps.org/hosts.txt"
 # $hostsFileLoc="hosts"
